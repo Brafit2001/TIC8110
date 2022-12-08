@@ -3,6 +3,8 @@ package es.uc3m.tiw.controller;
 import java.util.List;
 //import java.util.Optional;
 
+import es.uc3m.tiw.repository.EventDAO;
+import es.uc3m.tiw.repository.UserDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +21,11 @@ import es.uc3m.tiw.repository.TicketDAO;
 public class TicketController {
 
 	@Autowired
-	TicketDAO daous;
+	TicketDAO daoti;
+	@Autowired
+	EventDAO daoev;
+	@Autowired
+	UserDAO daous;
 
 
 	// ----------------- GET ALL TICKETS ----------------------
@@ -27,7 +33,7 @@ public class TicketController {
 	public @ResponseBody ResponseEntity<List<Ticket>> getTickets(){
 		List<Ticket> ticketList;
 		try {
-			ticketList = daous.findAll();
+			ticketList = daoti.findAll();
 			if (ticketList.isEmpty()){
 				return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 			}
@@ -43,8 +49,10 @@ public class TicketController {
 	// ----------------- GET TICKET ----------------------
 	@RequestMapping(value= "/tickets/{id}",  method = RequestMethod.GET)
 	public @ResponseBody ResponseEntity<Ticket> getEventByName(@PathVariable Long id){
-		//return daous.findByName(name);
-		 Ticket tic = daous.findById(id).orElse(null);
+		 Ticket tic = daoti.findById(id).orElse(null);
+		 if (tic == null){
+			 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		 }
 		 return new ResponseEntity<>(tic, HttpStatus.OK);
 	}
 
@@ -52,9 +60,14 @@ public class TicketController {
 	// ----------------- SAVE TICKET ----------------------
 	@PostMapping("/tickets")
 	public ResponseEntity<Ticket> saveTicket(@RequestBody Ticket pticket){
-
 		ResponseEntity<Ticket> response;
-		Ticket newTicket = daous.save(pticket);
+		User us = daous.findById(pticket.getIduser()).orElse(null);
+		Event ev = daoev.findById(pticket.getIdevent()).orElse(null);
+		if (us == null || ev == null){
+			response = new ResponseEntity<>(HttpStatus.NOT_FOUND);
+			return response;
+		}
+		Ticket newTicket = daoti.save(pticket);
 		if (newTicket == null) {
 			response = new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		} else {
@@ -67,29 +80,48 @@ public class TicketController {
 	@RequestMapping(value= "/tickets/{id}", method = RequestMethod.PUT)
 	public @ResponseBody ResponseEntity<Ticket> updateTicket(@PathVariable @Validated Long id, @RequestBody Ticket pTicket) {
 		ResponseEntity<Ticket> response;
-		//Optional<User> us = daous.findById(id);
-		Ticket tic = daous.findById(id).orElse(null);
+		System.out.println(pTicket.getIduser());
+		System.out.println(pTicket.getPrice());
+		Ticket tic = daoti.findById(id).orElse(null);
 		if (tic == null) {
 			response = new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		} else {
-			tic.setIdevent(pTicket.getIdevent());
-			tic.setIduser(pTicket.getIduser());
-			tic.setPrice(pTicket.getPrice());
-			tic.setType(pTicket.getType());
-			response = new ResponseEntity<>(daous.save(tic), HttpStatus.OK);
+			if (pTicket.getIduser() != null){
+				User us = daous.findById(pTicket.getIduser()).orElse(null);
+				if (us == null){
+					return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+				}else{
+					tic.setIduser(pTicket.getIduser());
+				}
+			}
+			if (pTicket.getIdevent() != null){
+				Event ev = daoev.findById(pTicket.getIdevent()).orElse(null);
+				if (ev == null){
+					return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+				}else{
+					tic.setIdevent(pTicket.getIdevent());
+				}
+			}
+			if (!pTicket.getType().equals("")){
+				tic.setType(pTicket.getType());
+			}
+			if (pTicket.getPrice() == 0){
+				tic.setPrice(pTicket.getPrice());
+			}
+			response = new ResponseEntity<>(daoti.save(tic), HttpStatus.OK);
 		}
 		return response;
 	}
 
-	// ----------------- DELETE EVENT ----------------------
+	// ----------------- DELETE Ticket ----------------------
 	@RequestMapping(value= "/tickets/{id}", method = RequestMethod.DELETE)
 	public @ResponseBody ResponseEntity<Ticket> deleteEvent(@PathVariable @Validated Long id) {
 		ResponseEntity<Ticket> response;
-		Ticket tic = daous.findById(id).orElse(null);
+		Ticket tic = daoti.findById(id).orElse(null);
 		if (tic == null) {
 			response = new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		} else {
-			daous.delete(tic);
+			daoti.delete(tic);
 			response = new ResponseEntity<>(HttpStatus.OK);
 		}
 		return response;
